@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: testing04
+Transform:
+- AWS::Serverless-2016-10-31
+Resources:
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+  LambdaRolePolicies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: LambdaPolicy
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Stmt1477516473539
+          Action:
+          - logs:CreateLogGroup
+          - logs:CreateLogStream
+          - logs:PutLogEvents
+          Effect: Allow
+          Resource: arn:aws:logs:*:*:*
+        - Sid: Stmt1484080345748
+          Action:
+          - sns:Publish
+          Effect: Allow
+          Resource:
+            Fn::Join:
+            - ''
+            - - 'arn:aws:sns:'
+              - Ref: AWS::Region
+              - ':'
+              - Ref: AWS::AccountId
+              - ':'
+              - Ref: SNSTopicName
+      Roles:
+      - Ref: LambdaFunctionRole
+  SNSPulishFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role:
+        Fn::GetAtt:
+        - LambdaExecutionRole
+        - Arn
+      Description: A Lambda function that logs the payload of messages sent to an
+        associated SNS topic.
+      Runtime: nodejs12.x
+      Handler: src/handlers/push.snsPulishHandler
+      MemorySize: 128
+      Timeout: 25
+      CodeUri: SNSPulishFunction
+  LambdaInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+        - SNSPulishFunction
+        - Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - CloudWatchEventRule
+        - Arn
+  CloudWatchEventRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: EventRule
+      EventPattern:
+        source:
+        - aws.health
+      State: ENABLED
+      Targets:
+      - Arn:
+          Fn::GetAtt:
+          - SNSPublishFunction
+          - Arn
+        Id: SNSPublishFunction
