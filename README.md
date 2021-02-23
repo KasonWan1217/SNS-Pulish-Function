@@ -1,4 +1,4 @@
-# testing04
+# SNS-Pulish-Function
 
 This project contains source code and supporting files for a serverless application that you can deploy with the AWS Serverless Application Model (AWS SAM) command line interface (CLI). It includes the following files and folders:
 
@@ -133,7 +133,7 @@ my-application$ AWS_SAM_STACK_NAME=<stack-name> npm run integ-test
 To delete the sample application that you created, use the AWS CLI. Assuming you used your project name for the stack name, you can run the following:
 
 ```bash
-aws cloudformation delete-stack --stack-name testing04
+aws cloudformation delete-stack --stack-name SNS-Pulish-Function
 ```
 
 ## Resources
