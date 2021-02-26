@@ -11,10 +11,10 @@ Description: >-
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/transform-section-structure.html
 Transform:
 - AWS::Serverless-2016-10-31
-# Parameters:
-#     SNSTopicName:
-#         Type: String
-#         Description: Please enter your SNS Topic Name. (SNS Topic must exist in the same region where this stack is launched).
+Parameters:
+    SNSTopicName:
+        Type: String
+        Description: Please enter your SNS Topic Name. (SNS Topic must exist in the same region where this stack is launched).
 
 # Resources declares the AWS resources that you want to include in the stack
 # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html
@@ -41,26 +41,31 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
             Action: "sts:AssumeRole"
-  LambdaRolePolicies: 
+  LambdaGroupPolicies: 
     Type: "AWS::IAM::Policy"
     Properties: 
-      PolicyName: "LambdaPolicy"
+      PolicyName: "SnsPublishPolicies"
       PolicyDocument: 
         Version: "2012-10-17"
         Statement: 
-          - 
-            Sid: Stmt1477516473539
+          - Sid: SNSLogPolicy
+            Effect: Allow
             Action:
               - logs:CreateLogGroup
               - logs:CreateLogStream
               - logs:PutLogEvents
+            Resource: 
+              Fn::Join:
+                - "" 
+                - - "arn:aws:logs:"
+                  - !Ref "AWS::Region"
+                  - ":"
+                  - !Ref "AWS::AccountId"
+                  - ":*"
+          - Sid: SNSPulishPolicy
             Effect: Allow
-            Resource: arn:aws:logs:*:*:*
-          - 
-            Sid: Stmt1484080345748
             Action:
               - sns:Publish
-            Effect: Allow
             Resource: 
               Fn::Join:
                 - "" 
@@ -71,8 +76,32 @@ Resources:
                   - ":"
                   - !Ref "SNSTopicName"
       Roles: 
-        - 
-          Ref: "LambdaFunctionRole"
+        - Ref: "LambdaExecutionRole"
+      
+
+        # Statement: 
+        #   - 
+        #     Sid: Stmt1477516473539
+        #     Action:
+        #       - logs:CreateLogGroup
+        #       - logs:CreateLogStream
+        #       - logs:PutLogEvents
+        #     Effect: Allow
+        #     Resource: arn:aws:logs:*:*:*
+        #   - 
+        #     Sid: Stmt1484080345748
+        #     Action:
+        #       - sns:Publish
+        #     Effect: Allow
+        #     Resource: 
+        #       Fn::Join:
+        #         - "" 
+        #         - - "arn:aws:sns:"
+        #           - !Ref "AWS::Region"
+        #           - ":"
+        #           - !Ref "AWS::AccountId"
+        #           - ":"
+        #           - !Ref "SNSTopicName"
   SNSPulishFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -99,31 +128,5 @@ Resources:
       # Policies:
       #   # Give Lambda basic execution Permission to the helloFromLambda
       #   - AWSLambdaSNSPublishPolicyExecutionRole
-  LambdaInvokePermission: 
-    Type: "AWS::Lambda::Permission"
-    Properties: 
-      FunctionName: 
-        Fn::GetAtt: 
-          - "SNSPulishFunction"
-          - "Arn"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: 
-        !GetAtt CloudWatchEventRule.Arn
-  CloudWatchEventRule: 
-    Type: "AWS::Events::Rule"
-    Properties: 
-      Description: "EventRule"
-      EventPattern: 
-        source: 
-          - "aws.health"
-      State: "ENABLED"
-      Targets: 
-        - 
-          Arn: 
-            Fn::GetAtt: 
-              - "SNSPublishFunction"
-              - "Arn"
-          Id: "SNSPublishFunction"
       
       
